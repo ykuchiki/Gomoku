@@ -1,11 +1,11 @@
 import tkinter
 
-from gomoenv import GomoEnv
+from Title import TitleScreen
 
 if __name__ == "__main__":
     app = tkinter.Tk()
     app.title("五目並べ")
-    GomoEnv = GomoEnv(app)
+    TitleScreen(app)
     app.mainloop()
 
 

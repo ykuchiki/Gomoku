@@ -1,5 +1,5 @@
-import tkinter
-import tkinter.messagebox
+import tkinter as tk
+import tkinter.messagebox as tkm
 import random
 import sys
 
@@ -7,9 +7,10 @@ import const as C
 
 
 class GomoEnv:
-    def __init__(self, master):
+    def __init__(self, master, difficulty):
         self.master = master
         self.player = C.YOU
+        self.difficulty = difficulty
         self.canvas = None
         self.board = None  # 盤面上の石を管理する二次元リスト
         self.color = {
@@ -31,7 +32,7 @@ class GomoEnv:
     def createWidgets(self):
         """ウィジェットの作成と配置"""
         # キャンパスの作成
-        self.canvas = tkinter.Canvas(
+        self.canvas = tk.Canvas(
             self.master,
             bg=C.BOARD_COLOR,
             width=C.CANVAS_SIZE,
@@ -39,8 +40,6 @@ class GomoEnv:
             highlightthickness=0
         )
         self.canvas.pack(padx=10, pady=10)
-        self.test_button = tkinter.Button(self.master, text="テストボタン")
-        self.test_button.pack(padx=10, pady=10)
 
         # キャンバスを更新する
         self.canvas.update()
@@ -141,6 +140,9 @@ class GomoEnv:
         # 描画した円の色を管理リストに記憶
         self.board[y][x] = color
 
+        # UIの更新を強制
+        self.master.update_idletasks()
+
         # 5つ並んだかチェック
         if self.count(x, y, color) >= 5:
             self.showResult()
@@ -212,9 +214,21 @@ class GomoEnv:
 
         # 結果をメッセージボックスで表示
         if winner == C.YOU:
-            tkinter.messagebox.showinfo("結果", "あなたの勝ちです！！！")
+            tkm.showinfo("結果", "あなたの勝ちです！！！")
         else:
-            tkinter.messagebox.showinfo("結果", "あなたの負けです...")
+            tkm.showinfo("結果", "あなたの負けです...")
+
+        # 勝利メッセージ表示後、タイトル画面に戻る
+        self.returnToTitle()
+
+    def returnToTitle(self):
+        """タイトル画面に戻る"""
+        # 現在のゲーム画面のウィジェットをクリア
+        self.canvas.destroy()
+
+        from Title import TitleScreen
+        # タイトル画面を表示
+        TitleScreen(self.master)
 
     def com(self):
         """COMを石を置かせる"""
@@ -239,8 +253,3 @@ class GomoEnv:
 
         # 石を置く
         self.place(x, y, C.COM_COLOR)
-
-    def on_test_button_click(self):
-        """ボタンがクリックされた時の処理"""
-        print("ボタンがクリックされました！")
-        tkinter.messagebox.showinfo("通知", "ボタンがクリックされました！")

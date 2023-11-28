@@ -5,8 +5,7 @@ CANVAS_SIZE = 600
 NUM_LINE = 15
 
 # 色の設定
-BOARD_COLOR = "lightblue"
-#BOARD_COLOR = "burlywood3"
+BOARD_COLOR = "burlywood3"
 YOUR_COLOR = "black"
 COM_COLOR = "white"
 
