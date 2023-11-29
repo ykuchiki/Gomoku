@@ -20,7 +20,7 @@ MacBookのAppleシリコンをお使いの方は，TkinterのGUI不具合が起�
 arch -arm64 python main.py
 ```
 
-![[images/sample.png]]
+![sample](images/sample.png)
 
 ## 今後実装予定
 1. CPUの難易度別
