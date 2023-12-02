@@ -19,6 +19,10 @@ class GomoEnv:
         }
         self.nextDisk = None
         self.interval = None
+        self.lastStone = None
+        self.blinkColor = "#506396"
+        self.lastStoneVisible = False
+        self.blinkTimer = None
 
         # ウィジェットの作成
         self.createWidgets()
@@ -134,6 +138,7 @@ class GomoEnv:
 
     def place(self, x, y, color):
         """石を置く&配列操作"""
+        self.stopBlinking()
         # 石の描画
         self.drawDisk(x, y, color)
 
@@ -143,19 +148,24 @@ class GomoEnv:
         # UIの更新を強制
         self.master.update_idletasks()
 
+        self.lastStone = (x, y)
+        # 相手の石のみチカチカさせる
+        if self.player == C.COM:
+            self.lastStoneVisible = False  # 最初の点滅を白の石の色で始める
+            self.blinkLastStone()
+
         # 5つ並んだかチェック
         if self.count(x, y, color) >= 5:
             self.showResult()
             return
 
         # プレイヤーは交互に変更
-        if self.player == C.COM:
-            self.player = C.YOU
-        else:
-            self.player = C.COM
+        self.player = C.COM if self.player == C.YOU else C.YOU
 
         if self.player == C.COM:
             self.master.after(1000, self.com)
+
+        print(self.board)
 
     def count(self, x, y, color):
         """配置チェック"""
@@ -253,3 +263,53 @@ class GomoEnv:
 
         # 石を置く
         self.place(x, y, C.COM_COLOR)
+
+    def blinkLastStone(self):
+        """最新の石をチカチカさせる"""
+        if self.lastStone:
+            x, y = self.lastStone
+            current_color = self.board[y][x]
+            blink_color = self.blinkColor if self.lastStoneVisible else current_color
+            blink_interval = 300 if self.lastStoneVisible else 600
+            # 石の色を変更
+            self.updateDiskColor(x, y, blink_color)
+            self.lastStoneVisible = not self.lastStoneVisible
+            # 指定した時間後に再度このメソッドを呼び出す
+            self.blinkTimer = self.master.after(blink_interval, self.blinkLastStone)
+
+    def updateDiskColor(self, x, y, color):
+        """指定された石の色を更新する"""
+        tag_name = f"disk_{x}_{y}"
+        # 特定の石を削除
+        self.canvas.delete(tag_name)
+        # 新しい色で石を描画
+        self.drawDisk(x, y, color)
+
+    def stopBlinking(self):
+        """チカチカを停止し、石を元の色に戻す"""
+        if self.lastStone:
+            x, y = self.lastStone
+            original_color = self.board[y][x]
+            self.updateDiskColor(x, y, original_color)
+        if self.blinkTimer is not None:
+            self.master.after_cancel(self.blinkTimer)
+            self.blinkTimer = None
+
+    def get_possible_actions(self):
+        """現在の盤面から選択可能な行動をリストで返す"""
+        possible_actions = []
+        for y in range(len(self.board)):
+            for x in range(len(self.board[y])):
+                if self.board[y][x] is None:  # 医師が置かれてないマス
+                    possible_actions.append((x, y))
+        return possible_actions
+
+    def make_action(self, move, player):
+        """agent用アクションメソッド"""
+        x, y = move
+        self.board[y][x] = player
+
+    def undo_action(self, move):
+        """agent用アクション取り消しメソッド"""
+        x, y = move
+        self.board[y][x] = None  # 石を取り除く
