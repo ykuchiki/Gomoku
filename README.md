@@ -1,8 +1,4 @@
 # モンテカルロ木探索などを用いた五目並べ対戦ゲーム
-
-現在誠意実装中です．
-ベースラインは完成してるので，一応遊べます．
-
 poetryで環境を構築してください
 ```
 poetry install
@@ -21,6 +17,3 @@ arch -arm64 python main.py
 ```
 
 ![sample](images/sample.png)
-
-## 今後実装予定
-1. CPUの難易度別
