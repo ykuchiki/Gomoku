@@ -1,28 +1,23 @@
 import tkinter as tk
-import tkinter.messagebox as tkm
+from tkinter import messagebox as tkm
 import random
-import sys
 
 import const as C
+from gamestate import State
+import Agents
 
 
 class GomoEnv:
-    def __init__(self, master, difficulty):
+    def __init__(self, master, mode):
         self.master = master
         self.player = C.YOU
-        self.difficulty = difficulty
+        self.mode = mode
         self.canvas = None
         self.board = None  # 盤面上の石を管理する二次元リスト
         self.color = {
             C.YOU: C.YOUR_COLOR,
             C.COM: C.COM_COLOR
         }
-        self.nextDisk = None
-        self.interval = None
-        self.lastStone = None
-        self.blinkColor = "#506396"
-        self.lastStoneVisible = False
-        self.blinkTimer = None
 
         # ウィジェットの作成
         self.createWidgets()
@@ -120,51 +115,6 @@ class GomoEnv:
 
         return ix, iy
 
-    def click(self, event):
-        """盤面がクリックされた時"""
-        # 自分のターンじゃない時は何もしない
-        if self.player != C.YOU:
-            return
-
-        x, y = self.getIntersection(event.x, event.y)
-
-        # 盤面外の位置がクリックされたら何もしない
-        if x < 0 or x >= C.NUM_LINE or y < 0 or y >= C.NUM_LINE:
-            return
-
-        # その座標に石がなければ石を置く
-        if not self.board[y][x]:
-            self.place(x, y, self.color[self.player])
-
-    def place(self, x, y, color):
-        """石を置く&配列操作"""
-        self.stopBlinking()
-        # 石の描画
-        self.drawDisk(x, y, color)
-
-        # 描画した円の色を管理リストに記憶
-        self.board[y][x] = color
-
-        # UIの更新を強制
-        self.master.update_idletasks()
-
-        self.lastStone = (x, y)
-        # 相手の石のみチカチカさせる
-        if self.player == C.COM:
-            self.lastStoneVisible = False  # 最初の点滅を白の石の色で始める
-            self.blinkLastStone()
-
-        # 5つ並んだかチェック
-        if self.count(x, y, color) >= 5:
-            self.showResult()
-            return
-
-        # プレイヤーは交互に変更
-        self.player = C.COM if self.player == C.YOU else C.YOU
-
-        if self.player == C.COM:
-            self.master.after(1000, self.com)
-
     def count(self, x, y, color):
         """配置チェック"""
         # チェックする方向をリストに格納
@@ -197,6 +147,7 @@ class GomoEnv:
 
                 count_num += 1
 
+            # 反対方向も同様にチェック
             for s in range(-1, -C.NUM_LINE, -1):
                 xi = x + i * s
                 yj = y + j * s
@@ -214,6 +165,69 @@ class GomoEnv:
                 max_ = count_num
 
         return max_
+
+    def check_win(self, x, y, color):
+        if self.count(x, y, color) >= 5:
+            return True
+        return False
+
+    def switchPlayer(self):
+        self.player = C.COM if self.player == C.YOU else C.YOU
+
+    def click(self, event):
+        # 自分のターンじゃない時は何もしない
+        if self.player != C.YOU:
+            return
+
+        x, y = self.getIntersection(event.x, event.y)
+        index = y * C.NUM_LINE + x
+
+        # 盤面外の位置がクリックされたら何もしない
+        if x < 0 or x >= C.NUM_LINE or y < 0 or y >= C.NUM_LINE or self.board[y][x] is not None:
+            return
+
+        self.lastStone = (x, y)
+        self.board[y][x] = self.color[self.player]
+        self.drawDisk(x, y, self.color[self.player])
+        self.master.update_idletasks()
+
+        # ゲーム状態の更新
+        state = State([1 if x == C.YOUR_COLOR else 0 for row in self.board for x in row],
+                      [1 if x == C.COM_COLOR else 0 for row in self.board for x in row])
+
+        if self.check_win(x, y, self.color[self.player]):
+            self.master.after(100, self.showResult())
+            return
+
+        self.switchPlayer()
+
+        # AIのターン
+        # モードに応じてAIの行動を選択
+        if self.mode == "Random":
+            action = Agents.random_action(state)
+        elif self.mode == "MiniMax":
+            action = Agents.mini_max_action(state)
+        elif self.mode == "AlphaBeta":
+            action = Agents.alpha_beta_action(state)
+        elif self.mode == "MCTS":
+            action = Agents.mcts_action(state)
+        elif self.mode == "test_com":
+            x, y = self.com1()
+            if x is not None and y is not None:
+                action = y * C.NUM_LINE + x
+            else:
+                action = None
+
+        ax, ay = action % C.NUM_LINE, action // C.NUM_LINE
+        self.board[ay][ax] = self.color[self.player]
+        self.drawDisk(ax, ay, self.color[self.player])
+        self.master.update_idletasks()
+
+        if self.check_win(ax, ay, self.color[self.player]):
+            self.master.after(100, self.showResult())
+            return
+
+        self.switchPlayer()
 
     def showResult(self):
         """ゲームの終了時の結果を表示"""
@@ -238,7 +252,7 @@ class GomoEnv:
         # タイトル画面を表示
         TitleScreen(self.master)
 
-    def com(self):
+    def com1(self):
         """COMを石を置かせる"""
         # 相手が石をおいた時に石が最大で交差する座標を取得
         max_list = []
@@ -256,60 +270,8 @@ class GomoEnv:
                         max_ = count_num
 
         # 連続する石が最大になる交点から一つランダムに選択
-        choice = random.randrange(len(max_list))
-        x, y = max_list[choice]
-
-        # 石を置く
-        self.place(x, y, C.COM_COLOR)
-
-    def blinkLastStone(self):
-        """最新の石をチカチカさせる"""
-        if self.lastStone:
-            x, y = self.lastStone
-            current_color = self.board[y][x]
-            blink_color = self.blinkColor if self.lastStoneVisible else current_color
-            blink_interval = 300 if self.lastStoneVisible else 600
-            # 石の色を変更
-            self.updateDiskColor(x, y, blink_color)
-            self.lastStoneVisible = not self.lastStoneVisible
-            # 指定した時間後に再度このメソッドを呼び出す
-            self.blinkTimer = self.master.after(blink_interval, self.blinkLastStone)
-
-    def updateDiskColor(self, x, y, color):
-        """指定された石の色を更新する"""
-        tag_name = f"disk_{x}_{y}"
-        # 特定の石を削除
-        self.canvas.delete(tag_name)
-        # 新しい色で石を描画
-        self.drawDisk(x, y, color)
-
-    def stopBlinking(self):
-        """チカチカを停止し、石を元の色に戻す"""
-        if self.lastStone:
-            x, y = self.lastStone
-            original_color = self.board[y][x]
-            self.updateDiskColor(x, y, original_color)
-        if self.blinkTimer is not None:
-            self.master.after_cancel(self.blinkTimer)
-            self.blinkTimer = None
-
-    def get_possible_actions(self):
-        """現在の盤面から選択可能な行動をリストで返す"""
-        possible_actions = []
-        for y in range(len(self.board)):
-            for x in range(len(self.board[y])):
-                if self.board[y][x] is None:  # 石が置かれてないマス
-                    possible_actions.append((x, y))
-        return possible_actions
-
-    def make_action(self, move, player):
-        """agent用アクションメソッド"""
-        x, y = move
-        self.board[y][x] = player
-
-    def undo_action(self, move):
-        """agent用アクション取り消しメソッド"""
-        x, y = move
-        self.board[y][x] = None  # 石を取り除く
-
-
+        if max_list:
+            choice = random.randrange(len(max_list))
+            x, y = max_list[choice]
+            return x, y
+        return None

@@ -21,14 +21,18 @@ class TitleScreen:
 
         self.background_photo = ImageTk.PhotoImage(self.background_image)
 
+        # エージェントのタイプ選択用
+        self.agent_type = tk.StringVar(master, "Random")  # デフォルトのエージェントタイプ
+        self.agent_types = ["Random", "MiniMax", "AlphaBeta", "MCTS", "test_com"]  # エージェントタイプのオプション
+
         # ウィジェットの作成
         self.createWidgets()
 
     def start_game(self):
         self.canvas.pack_forget()
-        from gomoenv import GomoEnv
+        from env import GomoEnv
         # ゲーム環境を開始するときに難易度を渡す
-        GomoEnv(self.master, self.difficulty.get())
+        GomoEnv(self.master,  self.agent_type.get())
 
     def createWidgets(self):
         """ウィジェットの作成と配置"""
@@ -52,18 +56,18 @@ class TitleScreen:
             anchor="center"
         )
 
-        # 難易度選択のドロップダウンメニューをキャンバスに配置
-        self.difficulty_menu = tk.OptionMenu(self.canvas, self.difficulty, *self.difficulties)
-        self.difficulty_menu.config(width=10, font=('Helvetica', 12))  # オプションメニューのスタイルを設定
-        difficulty_menu_window = self.canvas.create_window(
-            C.CANVAS_SIZE / 2, 275,  # ドロップダウンメニューの位置をロゴの下に調整
-            window=self.difficulty_menu,
+        # エージェントタイプ選択のドロップダウンメニューをキャンバスに配置
+        self.agent_type_menu = tk.OptionMenu(self.canvas, self.agent_type, *self.agent_types)
+        self.agent_type_menu.config(width=10, font=('Helvetica', 12))
+        agent_type_menu_window = self.canvas.create_window(
+            C.CANVAS_SIZE / 2, 325,  # エージェントタイプ選択メニューの位置を調整
+            window=self.agent_type_menu,
             anchor="center"
         )
 
         # 開始ボタンの配置
         self.start_button_window = self.canvas.create_window(
-            C.CANVAS_SIZE / 2, 350,  # 開始ボタンの位置を難易度選択メニューの下に調整
+            C.CANVAS_SIZE / 2, 400,  # 開始ボタンの位置をエージェントタイプ選択メニューの下にさらに調整
             window=tk.Button(
                 self.canvas,
                 text="ゲーム開始",
