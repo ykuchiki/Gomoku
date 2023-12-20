@@ -170,7 +170,7 @@ def mcts_action(state):
     root_node.expand()
 
     # 指定回数のシミュレーションを実行
-    for _ in range(100):
+    for _ in range(1000):
         root_node.evaluate()
 
     # 試行回数の最大値を持つ行動を返す
